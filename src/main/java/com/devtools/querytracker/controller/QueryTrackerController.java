@@ -26,7 +26,7 @@ public class QueryTrackerController {
     }
 
     @GetMapping("/api/traces/{traceId}")
-    public ResponseEntity<Map<String, Object>> getTrace(@PathVariable String traceId) {
+    public ResponseEntity<Map<String, Object>> getTrace(@PathVariable("traceId") String traceId) {
         return traceStorage.getAll().stream()
                 .filter(t -> t.getTraceId().equals(traceId))
                 .findFirst()
