@@ -1,29 +1,46 @@
-// app.js - bootstrap and auto-refresh
-
+// app.js
 $(function () {
 
-  var REFRESH_MS = 5000;
+  var refreshTimer = null;
+  var isLive = false;
 
-  // prepend live dot to refresh indicator
-  $('#refresh-indicator').html(
-    '<span class="refresh-dot"></span>auto-refresh 5s'
-  );
+  List.init();
 
-  function refresh() {
+  function load() {
     Api.getTraces(function (traces) {
-      Render.stats(traces);
-      Render.table(traces);
+      List.render(traces);
     });
   }
 
-  $('#btn-clear').on('click', function () {
-    Api.clearTraces(function () {
-      refresh();
-    });
+  function setAutoRefresh(ms) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = null;
+    if (ms > 0) refreshTimer = setInterval(load, ms);
+  }
+
+  $('#btn-refresh').on('click', load);
+
+  $('#btn-live').on('click', function () {
+    isLive = !isLive;
+    if (isLive) {
+      $(this).addClass('active').find('.live-dot').css('background','var(--ok)');
+      setAutoRefresh(parseInt($('#refresh-interval').val()) || 5000);
+    } else {
+      $(this).removeClass('active');
+      setAutoRefresh(0);
+    }
   });
 
-  // initial load + interval
-  refresh();
-  setInterval(refresh, REFRESH_MS);
+  $('#refresh-interval').on('change', function () {
+    if (isLive) setAutoRefresh(parseInt($(this).val()) || 0);
+  });
 
+  $('#btn-back').on('click', function () {
+    Inspect.close();
+  });
+
+  // start live by default
+  $('#btn-live').trigger('click');
+
+  load();
 });
