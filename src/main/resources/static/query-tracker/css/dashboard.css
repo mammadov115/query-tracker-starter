@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+
+/* stat card */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  line-height: 1.2;
+}
+.stat-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+}
+
+/* trace rows */
+.trace-row {
+  border-bottom: 1px solid #2a2d3a;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.trace-row:hover {
+  background: #1a1d27;
+}
+.trace-row.expanded {
+  background: #1a1d27;
+}
+
+/* query expand panel */
+.query-panel {
+  display: none;
+  background: #0f1117;
+  border-bottom: 1px solid #2a2d3a;
+}
+.query-panel.open {
+  display: table-row;
+}
+.query-entry {
+  border-left: 2px solid #2a2d3a;
+  margin: 4px 0;
+  padding: 6px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.query-entry:hover {
+  border-left-color: #6366f1;
+  color: #e2e8f0;
+}
+
+/* method badges */
+.method-get    { color: #22c55e; }
+.method-post   { color: #6366f1; }
+.method-put    { color: #f59e0b; }
+.method-patch  { color: #f59e0b; }
+.method-delete { color: #ef4444; }
+
+/* status code colors */
+.status-2xx { color: #22c55e; }
+.status-3xx { color: #6366f1; }
+.status-4xx { color: #f59e0b; }
+.status-5xx { color: #ef4444; }
+
+/* flag badges */
+.flag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 1px 6px;
+  border: 1px solid;
+  line-height: 1.6;
+}
+.flag-nplus1 {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+.flag-dup {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+/* duration color scale */
+.dur-fast   { color: #22c55e; }
+.dur-medium { color: #f59e0b; }
+.dur-slow   { color: #ef4444; }
+
+/* refresh pulse */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.refresh-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-dot 2s ease-in-out infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
