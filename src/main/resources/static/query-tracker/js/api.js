@@ -13,6 +13,17 @@ var Api = (function () {
     });
   }
 
+  function getTrace(traceId, onSuccess) {
+    $.ajax({
+      url: BASE + '/traces/' + traceId,
+      method: 'GET',
+      success: function (res) {
+        if (res.status === 'success') onSuccess(res.data.trace);
+      },
+      error: function () {}
+    });
+  }
+
   function clearTraces(onSuccess) {
     $.ajax({
       url: BASE + '/traces',
@@ -22,5 +33,5 @@ var Api = (function () {
     });
   }
 
-  return { getTraces: getTraces, clearTraces: clearTraces };
+  return { getTraces: getTraces, getTrace: getTrace, clearTraces: clearTraces };
 })();

@@ -43,8 +43,6 @@
         <div id="badge-dup" class="badge badge-danger hidden"></div>
       </div>
     </div>
-
-    <!-- stats row -->
     <div class="stats-row">
       <div class="stat-box">
         <div class="stat-num" id="stat-total">0</div>
@@ -63,8 +61,6 @@
         <div class="stat-label">TOTAL TIME</div>
       </div>
     </div>
-
-    <!-- toolbar -->
     <div class="toolbar">
       <input class="search-input" id="search" placeholder="Search endpoint, method, trace..." />
       <label class="nplus1-check">
@@ -81,8 +77,6 @@
       </div>
       <button class="btn-primary btn-sm" id="btn-run">RUN QUERY</button>
     </div>
-
-    <!-- table -->
     <div class="table-wrap">
       <table class="req-table">
         <thead>
@@ -101,7 +95,7 @@
     </div>
   </div>
 
-  <!-- INSPECT PAGE -->
+  <!-- INSPECT PAGE (existing SQL view) -->
   <div id="page-inspect" class="hidden">
     <div class="inspect-topbar">
       <button class="btn-back" id="btn-back">
@@ -115,12 +109,9 @@
       </div>
       <div id="inspect-flags" class="inspect-flags"></div>
     </div>
-
     <div class="inspect-summary">
       <span class="inspect-meta-line" id="inspect-meta-line"></span>
     </div>
-
-    <!-- inspect stats -->
     <div class="inspect-stats">
       <div class="istat">
         <div class="istat-num" id="istat-queries">0</div>
@@ -143,17 +134,154 @@
         <div class="istat-label">OVERALL</div>
       </div>
     </div>
-
-    <!-- query list -->
     <div class="query-list" id="query-list"></div>
-
-    <!-- detail panel -->
     <div class="detail-panel" id="detail-panel"></div>
+  </div>
+
+  <!-- OVERVIEW PAGE -->
+  <div id="page-overview" class="hidden">
+    <div class="inspect-topbar">
+      <button class="btn-back detail-back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="inspect-meta">
+        <span class="method-badge" id="ov-method"></span>
+        <span class="inspect-uri" id="ov-uri"></span>
+      </div>
+      <div id="ov-flags" class="inspect-flags"></div>
+    </div>
+    <div class="inspect-summary"><span id="ov-meta" class="inspect-meta-line"></span></div>
+
+    <!-- tab bar -->
+    <div class="detail-tabs">
+      <button class="detail-tab active" data-tab="overview">Overview</button>
+      <button class="detail-tab" data-tab="flow">Flow</button>
+      <button class="detail-tab" data-tab="operations">Operations</button>
+    </div>
+
+    <div class="detail-body">
+      <!-- stat cards -->
+      <div class="ov-stats-row">
+        <div class="ov-stat-card">
+          <div class="ov-stat-val" id="ov-stat-queries">0</div>
+          <div class="ov-stat-label">TOTAL QUERIES</div>
+        </div>
+        <div class="ov-stat-card">
+          <div class="ov-stat-val" id="ov-stat-duration">0ms</div>
+          <div class="ov-stat-label">TOTAL DURATION</div>
+        </div>
+        <div class="ov-stat-card">
+          <div class="ov-stat-val" id="ov-stat-tables">0</div>
+          <div class="ov-stat-label">TABLES TOUCHED</div>
+        </div>
+        <div class="ov-stat-card">
+          <div class="ov-stat-val" id="ov-stat-status">200 OK</div>
+          <div class="ov-stat-label">STATUS</div>
+        </div>
+      </div>
+
+      <!-- tables section -->
+      <div class="ov-section">
+        <div class="ov-section-header">
+          <span class="ov-section-title">Tables Touched</span>
+          <span class="ov-section-sub">Which tables were accessed and how many operations were performed.</span>
+        </div>
+        <table class="ov-table">
+          <thead>
+            <tr><th>Table</th><th>Operations</th><th>Count</th><th>Duration</th></tr>
+          </thead>
+          <tbody id="ov-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- quick insight -->
+      <div class="ov-insight-box">
+        <span class="ov-insight-icon">&#128161;</span>
+        <div>
+          <div class="ov-insight-title">Quick Insight</div>
+          <div id="ov-insight"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW PAGE -->
+  <div id="page-flow" class="hidden">
+    <div class="inspect-topbar">
+      <button class="btn-back detail-back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="inspect-meta">
+        <span class="method-badge" id="fl-method"></span>
+        <span class="inspect-uri" id="fl-uri"></span>
+      </div>
+      <div id="fl-flags" class="inspect-flags"></div>
+    </div>
+    <div class="inspect-summary"><span class="inspect-meta-line">Execution Flow - See how your request moved through the database, step by step.</span></div>
+
+    <div class="detail-tabs">
+      <button class="detail-tab" data-tab="overview">Overview</button>
+      <button class="detail-tab active" data-tab="flow">Flow</button>
+      <button class="detail-tab" data-tab="operations">Operations</button>
+    </div>
+
+    <div class="detail-body fl-layout">
+      <div class="fl-left" id="fl-flow-steps"></div>
+      <div class="fl-right" id="fl-detail-panel" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- OPERATIONS PAGE -->
+  <div id="page-operations" class="hidden">
+    <div class="inspect-topbar">
+      <button class="btn-back detail-back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="inspect-meta">
+        <span class="method-badge" id="ops-method"></span>
+        <span class="inspect-uri" id="ops-uri"></span>
+      </div>
+      <div id="ops-flags" class="inspect-flags"></div>
+    </div>
+    <div class="inspect-summary"><span class="inspect-meta-line">Database Operations - all queries across all tables.</span></div>
+
+    <div class="detail-tabs">
+      <button class="detail-tab" data-tab="overview">Overview</button>
+      <button class="detail-tab" data-tab="flow">Flow</button>
+      <button class="detail-tab active" data-tab="operations">Operations</button>
+    </div>
+
+    <div class="detail-body ops-layout">
+      <div class="ops-left">
+        <div class="ops-header">
+          <div class="ops-header-title">Database Operations</div>
+          <div class="ops-header-sub" id="ops-header-sub">0 queries across 0 tables</div>
+        </div>
+        <div class="ops-filter-bar">
+          <button class="ops-filter-btn active" data-filter="ALL" id="ops-filter-all">All</button>
+          <button class="ops-filter-btn" data-filter="SELECT" id="ops-filter-select">SELECT</button>
+          <button class="ops-filter-btn" data-filter="INSERT" id="ops-filter-insert">INSERT</button>
+          <button class="ops-filter-btn" data-filter="UPDATE" id="ops-filter-update">UPDATE</button>
+          <button class="ops-filter-btn" data-filter="DELETE" id="ops-filter-delete">DELETE</button>
+        </div>
+        <div id="ops-tree"></div>
+      </div>
+      <div class="ops-right" id="ops-detail-panel" style="display:none"></div>
+    </div>
   </div>
 
   <script src="js/api.js"></script>
   <script src="js/list.js"></script>
   <script src="js/inspect.js"></script>
+  <script src="js/overview.js"></script>
+  <script src="js/flow.js"></script>
+  <script src="js/operations.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
