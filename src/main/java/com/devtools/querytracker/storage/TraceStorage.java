@@ -3,25 +3,30 @@ package com.devtools.querytracker.storage;
 import com.devtools.querytracker.model.RequestTrace;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 
 @Component
 public class TraceStorage {
 
+    private static final Logger log = LoggerFactory.getLogger(TraceStorage.class);
     private static final int MAX_SIZE = 200;
     private static final String FILE_PATH = "query-tracker-traces.json";
 
     private final LinkedList<RequestTrace> traces = new LinkedList<>();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .enable(SerializationFeature.INDENT_OUTPUT);
 
     @PostConstruct
     public synchronized void load() {
@@ -30,8 +35,9 @@ public class TraceStorage {
         try {
             List<RequestTrace> loaded = mapper.readValue(file, new TypeReference<List<RequestTrace>>() {});
             traces.addAll(loaded);
+            log.info("[QueryTracker] Loaded {} traces from disk", loaded.size());
         } catch (Exception e) {
-            // corrupted file - start fresh
+            log.warn("[QueryTracker] Failed to load traces from disk, starting fresh. Reason: {}", e.getMessage());
             file.delete();
         }
     }
@@ -86,7 +92,7 @@ public class TraceStorage {
         try {
             mapper.writeValue(new File(FILE_PATH), new ArrayList<>(traces));
         } catch (Exception e) {
-            // log silently - persistence is best-effort
+            log.error("[QueryTracker] Failed to persist traces to disk: {}", e.getMessage());
         }
     }
 }
