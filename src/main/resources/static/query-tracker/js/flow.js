@@ -104,42 +104,20 @@ var Flow = (function () {
       $(this).closest('.fl-step-card').addClass('active');
       renderDetailPanel(step, opIdx);
     });
-
-    // copy all SQLs button (rendered once in the right panel placeholder area)
-    renderCopyBar();
-  }
-
-  function renderCopyBar() {
-    var $right = $('#fl-detail-panel').closest('.fl-right');
-
-    // remove old copy bar if exists
-    $right.find('.fl-copy-bar').remove();
-
-    var $bar = $(
-      '<div class="fl-copy-bar">' +
-        '<span class="fl-copy-bar-label">All SQL queries for this request</span>' +
-        '<button class="btn-copy fl-copy-all-btn">Copy all</button>' +
-      '</div>'
-    );
-
-    $bar.find('.fl-copy-all-btn').on('click', function () {
-      if (!currentTrace) return;
-      var text = buildCopyText(currentTrace);
-      navigator.clipboard.writeText(text).then(function () {
-        var $btn = $bar.find('.fl-copy-all-btn');
-        $btn.text('Copied!').css('color', 'var(--ok)').css('border-color', 'var(--ok)');
-        setTimeout(function () {
-          $btn.text('Copy all').css('color', '').css('border-color', '');
-        }, 1800);
-      });
-    });
-
-    // insert before the detail panel
-    $('#fl-detail-panel').before($bar);
   }
 
   function renderDetailPanel(step, highlightOpIdx) {
     var $panel = $('#fl-detail-panel');
+
+    // build copy button for the title row
+    var titleHtml =
+      '<div class="fl-panel-title">' +
+        '<div class="fl-panel-title-left">' +
+          '<span class="fl-panel-title-table">' + esc(step.table) + '</span>' +
+          '<span class="fl-panel-subtitle">' + step.queryCount + ' operations</span>' +
+        '</div>' +
+        '<button class="btn-copy fl-copy-all-btn" title="Copy all SQLs for this request">Copy all SQLs</button>' +
+      '</div>';
 
     var opsHtml = (step.operations || []).map(function (op, i) {
       var dupTag = op.isDuplicate ? '<span class="qtag qtag-dup">DUP</span>' : '';
@@ -161,17 +139,25 @@ var Flow = (function () {
         '<div class="fl-panel-summary-item"><span class="dmeta-label">TOTAL DURATION</span><span class="dmeta-val">' + step.durationMs + 'ms</span></div>' +
       '</div>';
 
-    $panel.html(
-      '<div class="fl-panel-title">' + esc(step.table) + ' <span class="fl-panel-subtitle">' + step.queryCount + ' operations</span></div>' +
-      opsHtml +
-      summaryHtml
-    ).show();
+    $panel.html(titleHtml + opsHtml + summaryHtml).show();
+
+    // copy all button handler
+    $panel.find('.fl-copy-all-btn').off('click').on('click', function () {
+      if (!currentTrace) return;
+      var $btn = $(this);
+      navigator.clipboard.writeText(buildCopyText(currentTrace)).then(function () {
+        $btn.text('Copied!').addClass('fl-copy-btn-ok');
+        setTimeout(function () {
+          $btn.text('Copy all SQLs').removeClass('fl-copy-btn-ok');
+        }, 1800);
+      });
+    });
 
     if (highlightOpIdx >= 0) {
       var $target = $panel.find('[data-panelop="' + highlightOpIdx + '"]');
       if (!$target.length) return;
 
-      var $scrollContainer = $('#fl-detail-panel').closest('.fl-right');
+      var $scrollContainer = $panel.closest('.fl-right');
       var targetTop = $target[0].offsetTop;
 
       $scrollContainer.animate({ scrollTop: targetTop - 12 }, 180, function () {
