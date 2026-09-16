@@ -27,25 +27,26 @@ var Flow = (function () {
     $('#fl-detail-panel').hide().empty();
   }
 
-  function buildCopyText(trace) {
+  // builds copy text for a single step's operations
+  function buildStepCopyText(step) {
     var lines = [];
-    lines.push('Request: ' + trace.method + ' ' + trace.uri);
-    lines.push('Duration: ' + trace.durationMs + 'ms  |  Queries: ' + trace.queryCount);
-    if (trace.hasNPlusOne)   lines.push('WARNING: N+1 detected');
-    if (trace.hasDuplicates) lines.push('WARNING: Duplicate queries detected');
+    lines.push('Table: ' + step.table + '  |  Queries: ' + step.queryCount + '  |  Duration: ' + step.durationMs + 'ms');
     lines.push('');
-
-    var globalIdx = 1;
-    (trace.flowSteps || []).forEach(function (step) {
-      (step.operations || []).forEach(function (op) {
-        var dupNote = op.isDuplicate ? ' [DUPLICATE x' + op.duplicateCount + ']' : '';
-        lines.push('-- Query #' + globalIdx + ' | ' + op.operationType + ' | ' + step.table + ' | ' + op.durationMs + 'ms' + dupNote);
-        lines.push(op.sql || '');
-        lines.push('');
-        globalIdx++;
-      });
+    (step.operations || []).forEach(function (op, i) {
+      var dupNote = op.isDuplicate ? ' [DUPLICATE x' + op.duplicateCount + ']' : '';
+      lines.push('-- Query #' + (i + 1) + ' | ' + op.operationType + ' | ' + op.durationMs + 'ms' + dupNote);
+      lines.push(op.sql || '');
+      lines.push('');
     });
+    return lines.join('\n');
+  }
 
+  // builds copy text for a single SQL
+  function buildSingleSqlCopyText(op, table, idx) {
+    var dupNote = op.isDuplicate ? ' [DUPLICATE x' + op.duplicateCount + ']' : '';
+    var lines = [];
+    lines.push('-- Query #' + idx + ' | ' + op.operationType + ' | ' + table + ' | ' + op.durationMs + 'ms' + dupNote);
+    lines.push(op.sql || '');
     return lines.join('\n');
   }
 
@@ -130,6 +131,9 @@ var Flow = (function () {
           '<span class="fl-panel-op-dur">' + op.durationMs + 'ms</span>' +
         '</div>' +
         '<div class="fl-panel-sql">' + esc(op.sql) + '</div>' +
+        '<div class="fl-op-copy-row">' +
+          '<button class="btn-copy-sql" data-copyopidx="' + i + '" title="Copy this SQL">Copy SQL</button>' +
+        '</div>' +
       '</div>';
     }).join('');
 
@@ -139,16 +143,34 @@ var Flow = (function () {
         '<div class="fl-panel-summary-item"><span class="dmeta-label">TOTAL DURATION</span><span class="dmeta-val">' + step.durationMs + 'ms</span></div>' +
       '</div>';
 
-    $panel.html(titleHtml + opsHtml + summaryHtml).show();
+    // wrap scrollable body separately so title+summary stay fixed
+    $panel.html(
+      titleHtml +
+      '<div class="fl-panel-body">' + opsHtml + '</div>' +
+      summaryHtml
+    ).show();
 
-    // copy all button handler
+    // copy all SQLs for this step
     $panel.find('.fl-copy-all-btn').off('click').on('click', function () {
-      if (!currentTrace) return;
       var $btn = $(this);
-      navigator.clipboard.writeText(buildCopyText(currentTrace)).then(function () {
+      navigator.clipboard.writeText(buildStepCopyText(step)).then(function () {
         $btn.text('Copied!').addClass('fl-copy-btn-ok');
         setTimeout(function () {
           $btn.text('Copy all SQLs').removeClass('fl-copy-btn-ok');
+        }, 1800);
+      });
+    });
+
+    // per-op copy SQL button
+    $panel.find('.btn-copy-sql').off('click').on('click', function () {
+      var i   = parseInt($(this).data('copyopidx'));
+      var op  = (step.operations || [])[i];
+      if (!op) return;
+      var $btn = $(this);
+      navigator.clipboard.writeText(buildSingleSqlCopyText(op, step.table, i + 1)).then(function () {
+        $btn.text('Copied!').addClass('btn-copy-sql-ok');
+        setTimeout(function () {
+          $btn.text('Copy SQL').removeClass('btn-copy-sql-ok');
         }, 1800);
       });
     });
@@ -157,7 +179,7 @@ var Flow = (function () {
       var $target = $panel.find('[data-panelop="' + highlightOpIdx + '"]');
       if (!$target.length) return;
 
-      var $scrollContainer = $panel.closest('.fl-right');
+      var $scrollContainer = $panel.find('.fl-panel-body');
       var targetTop = $target[0].offsetTop;
 
       $scrollContainer.animate({ scrollTop: targetTop - 12 }, 180, function () {
