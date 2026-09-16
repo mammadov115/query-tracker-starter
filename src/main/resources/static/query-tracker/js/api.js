@@ -2,12 +2,12 @@
 var Api = (function () {
   var BASE = '/query-tracker/api';
 
-  function getTraces(onSuccess) {
+  function getTraces(page, onSuccess) {
     $.ajax({
-      url: BASE + '/traces',
+      url: BASE + '/traces?page=' + page + '&size=10',
       method: 'GET',
       success: function (res) {
-        if (res.status === 'success') onSuccess(res.data.traces);
+        if (res.status === 'success') onSuccess(res.data);
       },
       error: function () {}
     });

@@ -650,6 +650,9 @@ body {
   overflow: hidden;
   position: sticky;
   top: 70px;
+  max-height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
 }
 .fl-panel-title {
   padding: 14px 16px;
@@ -657,6 +660,7 @@ body {
   font-weight: 600;
   font-size: 14px;
   background: var(--surface);
+  flex-shrink: 0;
 }
 .fl-panel-subtitle { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 6px; }
 .fl-panel-op {
@@ -845,4 +849,68 @@ body {
   color: var(--ok);
   background: #f0fdf4;
   border-top: 1px solid #bbf7d0;
+}
+
+/* pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 0 24px;
+}
+.pg-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pg-btn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pg-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pg-info {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* flow panel op highlight pulse */
+.fl-panel-op-highlight {
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  transition: none;
+}
+.fl-panel-op-highlight-fade {
+  border-color: transparent;
+  box-shadow: none;
+  transition: border-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* flow copy bar */
+.fl-copy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.fl-copy-bar-label {
+  font-size: 11px;
+  color: var(--muted);
 }

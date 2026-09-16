@@ -1,8 +1,8 @@
 // list.js - request list page
 var List = (function () {
 
-  var allTraces   = [];
-  var sortByIssue = false;
+  var currentPage = 0;
+  var totalPages  = 1;
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -25,10 +25,6 @@ var List = (function () {
     return Math.max(3, Math.round((ms / maxMs) * 100));
   }
 
-  function issueScore(t) {
-    return (t.hasNPlusOne ? 2 : 0) + (t.hasDuplicates ? 1 : 0);
-  }
-
   function issueTags(t) {
     var h = '';
     if (t.hasNPlusOne)   h += '<span class="itag itag-nplus1">N+1</span>';
@@ -48,62 +44,48 @@ var List = (function () {
     return id ? id.substring(0, 8) + '...' : '';
   }
 
-  function render(traces) {
-    allTraces = traces;
-    update();
+  function renderSummary(summary, pagination) {
+    var total = pagination.totalElements;
+    var from  = total === 0 ? 0 : pagination.page * pagination.size + 1;
+    var to    = Math.min((pagination.page + 1) * pagination.size, total);
+    var range = total === 0 ? '0' : from + '-' + to;
+
+    $('#stat-total').text(summary.totalRequests);
+    $('#stat-queries').text(summary.totalQueries);
+    $('#stat-nplus1').text(summary.nPlusOneCount);
+    $('#stat-total-dur').text(summary.totalDurationMs + 'ms');
+    $('#list-subtitle').text(range + ' of ' + total + ' requests');
+
+    if (summary.nPlusOneCount > 0) {
+      $('#badge-nplus1').text(summary.nPlusOneCount + ' N+1').removeClass('hidden');
+    } else {
+      $('#badge-nplus1').addClass('hidden');
+    }
+    if (summary.duplicateCount > 0) {
+      $('#badge-dup').text(summary.duplicateCount + ' DUPLICATE').removeClass('hidden');
+    } else {
+      $('#badge-dup').addClass('hidden');
+    }
   }
 
-  function update() {
-    var search    = $('#search').val().toLowerCase();
-    var nplus1Only = $('#filter-nplus1').is(':checked');
-
-    var filtered = allTraces.filter(function (t) {
-      if (nplus1Only && !t.hasNPlusOne) return false;
-      if (search && t.uri.toLowerCase().indexOf(search) === -1 &&
-          t.method.toLowerCase().indexOf(search) === -1) return false;
-      return true;
-    });
-
-    if (sortByIssue) {
-      filtered = filtered.slice().sort(function (a, b) {
-        return issueScore(b) - issueScore(a);
-      });
-    }
-
-    var total    = allTraces.length;
-    var np1count = allTraces.filter(function(t){ return t.hasNPlusOne; }).length;
-    var dupcount = allTraces.filter(function(t){ return t.hasDuplicates; }).length;
-    var totalQ   = allTraces.reduce(function(s,t){ return s + t.queryCount; }, 0);
-    var totalDur = allTraces.reduce(function(s,t){ return s + t.durationMs; }, 0);
-
-    $('#stat-total').text(filtered.length);
-    $('#stat-queries').text(totalQ);
-    $('#stat-nplus1').text(np1count);
-    $('#stat-total-dur').text(totalDur + 'ms');
-    $('#list-subtitle').text(filtered.length + ' of ' + total + ' requests');
-
-    if (np1count > 0) { $('#badge-nplus1').text(np1count + ' N+1').removeClass('hidden'); }
-    else               { $('#badge-nplus1').addClass('hidden'); }
-    if (dupcount > 0) { $('#badge-dup').text(dupcount + ' DUPLICATE').removeClass('hidden'); }
-    else               { $('#badge-dup').addClass('hidden'); }
-
-    var maxMs = filtered.length ? Math.max.apply(null, filtered.map(function(t){ return t.durationMs; })) : 0;
-
+  function renderRows(traces) {
     var $tbody = $('#req-tbody');
     $tbody.empty();
 
-    if (filtered.length === 0) {
+    if (traces.length === 0) {
       $('#empty-state').removeClass('hidden');
       return;
     }
     $('#empty-state').addClass('hidden');
 
-    filtered.forEach(function (t) {
+    var maxMs = Math.max.apply(null, traces.map(function(t){ return t.durationMs; }));
+
+    traces.forEach(function (t) {
       var dc    = durClass(t.durationMs);
       var width = durWidth(t.durationMs, maxMs);
       var dbMs  = t.queries ? t.queries.reduce(function(s,q){ return s+q.durationMs; }, 0) : 0;
 
-      var row = '<tr class="req-row" data-id="' + esc(t.traceId) + '">' +
+      var row = '<tr class="req-row" style="cursor:pointer" data-id="' + esc(t.traceId) + '">' +
         '<td>' +
           '<div class="cell-request">' +
             '<div class="req-top">' +
@@ -134,26 +116,53 @@ var List = (function () {
       $tbody.append(row);
     });
 
-    // store for lookup
+    // store current page traces for inspect navigation
     window._tracesById = {};
-    allTraces.forEach(function(t){ window._tracesById[t.traceId] = t; });
+    traces.forEach(function(t){ window._tracesById[t.traceId] = t; });
+  }
+
+  function renderPagination() {
+    var $pg = $('#pagination');
+    $pg.empty();
+
+    if (totalPages <= 1) return;
+
+    var prevDisabled = currentPage === 0 ? 'disabled' : '';
+    var nextDisabled = currentPage >= totalPages - 1 ? 'disabled' : '';
+
+    $pg.html(
+      '<button class="pg-btn" id="pg-prev" ' + prevDisabled + '>&laquo; Prev</button>' +
+      '<span class="pg-info">' + (currentPage + 1) + ' / ' + totalPages + '</span>' +
+      '<button class="pg-btn" id="pg-next" ' + nextDisabled + '>Next &raquo;</button>'
+    );
+
+    $('#pg-prev').on('click', function () {
+      if (currentPage > 0) loadPage(currentPage - 1);
+    });
+    $('#pg-next').on('click', function () {
+      if (currentPage < totalPages - 1) loadPage(currentPage + 1);
+    });
+  }
+
+  function loadPage(page) {
+    currentPage = page;
+    Api.getTraces(page, function (data) {
+      totalPages = data.pagination.totalPages;
+      renderSummary(data.summary, data.pagination);
+      renderRows(data.traces);
+      renderPagination();
+    });
   }
 
   function init() {
-    $('#search').on('input', update);
-    $('#filter-nplus1').on('change', update);
-    $('#th-issues').on('click', function () {
-      sortByIssue = !sortByIssue;
-      update();
-    });
-
-    $(document).on('click', '.btn-inspect', function (e) {
-      e.stopPropagation();
-      var id = $(this).data('id');
-      var trace = window._tracesById[id];
-      if (trace) Inspect.open(trace);
-    });
+    // search and filter always reset to page 0
+    $('#search').on('input', function () { loadPage(0); });
+    $('#filter-nplus1').on('change', function () { loadPage(0); });
   }
 
-  return { render: render, init: init };
+  function getCurrentPage() {
+    return currentPage;
+  }
+
+  return { loadPage: loadPage, init: init, getCurrentPage: getCurrentPage };
 })();

@@ -35,6 +35,9 @@ var Operations = (function () {
     $('#ops-filter-update').text('UPDATE (' + updCount + ')');
     $('#ops-filter-delete').text('DELETE (' + delCount + ')');
 
+    var tables = trace.tables || [];
+    $('#ops-header-sub').text(ops.length + ' queries across ' + tables.length + ' tables');
+
     renderOps(ops, 'ALL');
     $('#ops-detail-panel').hide().empty();
 
@@ -50,7 +53,7 @@ var Operations = (function () {
         return '<div class="ops-tree-sub" data-label="' + esc(op.index) + '">' +
           '<span class="ops-tree-idx">' + esc(op.index) + '</span>' +
           '<span class="op-badge ' + opCls(op.operationType) + ' op-badge-xs">' + esc(op.operationType) + '</span>' +
-          '<span class="ops-tree-sublabel">' + esc(labelFor(op.operationType, step.table)) + '</span>' +
+          '<span class="ops-tree-sublabel">' + esc(op.label || labelFor(op.operationType, step.table)) + '</span>' +
           dupTag +
           '<span class="ops-tree-dur">' + op.durationMs + 'ms</span>' +
         '</div>';
@@ -90,32 +93,25 @@ var Operations = (function () {
   }
 
   function renderOps(ops, filter) {
-    var filtered = filter === 'ALL' ? ops : ops.filter(function(o){ return o.operationType === filter; });
-    var $list = $('#ops-list').empty();
-
-    filtered.forEach(function (op) {
-      var dupTag = op.isDuplicate ? '<span class="qtag qtag-dup">DUP</span>' : '';
-      var durColor = op.durationMs < 50 ? 'var(--ok)' : op.durationMs < 200 ? 'var(--warn)' : 'var(--danger)';
-      $list.append(
-        '<div class="ops-entry" data-idx="' + op.index + '">' +
-          '<span class="ops-entry-label">' + esc(String(op.index)) + '</span>' +
-          '<span class="op-badge ' + opCls(op.operationType) + '">' + esc(op.operationType) + '</span>' +
-          '<span class="ops-entry-table">' + esc(op.table) + '</span>' +
-          dupTag +
-          '<span class="ops-entry-dur" style="color:' + durColor + '">' + op.durationMs + 'ms</span>' +
-        '</div>'
-      );
+    // show/hide tree sub-items based on filter; show/hide groups with no visible children
+    $('#ops-tree .ops-tree-sub').each(function () {
+      var $sub = $(this);
+      var opType = $sub.find('.op-badge').text().trim();
+      var visible = filter === 'ALL' || opType === filter;
+      $sub.toggle(visible);
     });
 
-    // click op row -> detail
-    $list.off('click', '.ops-entry').on('click', '.ops-entry', function () {
-      var idx = $(this).data('idx');
-      var op = (currentTrace.operations || []).find(function(o){ return o.index == idx; });
-      if (!op) return;
-      $('.ops-entry').removeClass('active');
-      $(this).addClass('active');
-      renderDetailPanel(op);
+    // hide group if all its children are hidden
+    $('#ops-tree .ops-tree-group').each(function () {
+      var hasVisible = $(this).find('.ops-tree-sub:visible').length > 0;
+      $(this).toggle(hasVisible);
     });
+
+    // update header sub-count
+    var visibleCount = filter === 'ALL' ? ops.length
+      : ops.filter(function(o){ return o.operationType === filter; }).length;
+    var tables = (currentTrace && currentTrace.tables) || [];
+    $('#ops-header-sub').text(visibleCount + ' queries across ' + tables.length + ' tables');
   }
 
   function renderDetailPanel(op) {

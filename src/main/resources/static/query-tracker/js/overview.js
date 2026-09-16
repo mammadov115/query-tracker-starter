@@ -43,13 +43,18 @@ var Overview = (function () {
     var $tbody = $('#ov-table-body').empty();
     (trace.tables || []).forEach(function (t) {
       var ops = (t.operations || []).map(opBadge).join('');
-      var row = '<tr>' +
+      var row = '<tr class="ov-table-row" style="cursor:pointer" data-table="' + esc(t.table) + '">' +
         '<td><strong>' + esc(t.table) + '</strong></td>' +
         '<td>' + ops + '</td>' +
         '<td>' + t.count + '</td>' +
         '<td>' + t.durationMs + 'ms</td>' +
       '</tr>';
       $tbody.append(row);
+    });
+
+    // table row click -> flow tab
+    $('#ov-table-body').off('click', '.ov-table-row').on('click', '.ov-table-row', function () {
+      $('.detail-tab[data-tab="flow"]').trigger('click');
     });
 
     // quick insight

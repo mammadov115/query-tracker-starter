@@ -16,13 +16,39 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class QueryTrackerController {
 
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_SIZE     = 100;
+
     private final TraceStorage traceStorage;
     private final TraceAnalyzer traceAnalyzer;
 
     @GetMapping("/api/traces")
-    public ResponseEntity<Map<String, Object>> getTraces() {
-        List<RequestTrace> traces = traceStorage.getAll();
-        return ResponseEntity.ok(Map.of("status", "success", "data", Map.of("traces", traces)));
+    public ResponseEntity<Map<String, Object>> getTraces(
+            @RequestParam(value = "page", defaultValue = "0")  int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+
+        // clamp size to a safe range
+        size = Math.max(1, Math.min(size, MAX_SIZE));
+        page = Math.max(0, page);
+
+        int total      = traceStorage.count();
+        int totalPages = (int) Math.ceil((double) total / size);
+
+        List<RequestTrace> pageData = traceStorage.getPage(page, size);
+        Map<String, Object> summary    = traceStorage.getSummary();
+
+        Map<String, Object> pagination = new LinkedHashMap<>();
+        pagination.put("page",        page);
+        pagination.put("size",        size);
+        pagination.put("totalPages",  totalPages);
+        pagination.put("totalElements", total);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("traces",     pageData);
+        data.put("pagination", pagination);
+        data.put("summary",    summary);
+
+        return ResponseEntity.ok(Map.of("status", "success", "data", data));
     }
 
     @GetMapping("/api/traces/{traceId}")
@@ -53,9 +79,9 @@ public class QueryTrackerController {
     }
 
     private Map<String, Object> buildDetail(RequestTrace trace, List<QueryEntry> enriched) {
-        long dbTime = enriched.stream().mapToLong(QueryEntry::getDurationMs).sum();
+        long dbTime    = enriched.stream().mapToLong(QueryEntry::getDurationMs).sum();
         long slowCount = enriched.stream().filter(q -> q.getDurationMs() > 50).count();
-        long dupCount = enriched.stream().filter(QueryEntry::isDuplicate).count();
+        long dupCount  = enriched.stream().filter(QueryEntry::isDuplicate).count();
 
         // group by table, preserving insertion order
         Map<String, List<QueryEntry>> byTable = new LinkedHashMap<>();
@@ -63,26 +89,26 @@ public class QueryTrackerController {
             byTable.computeIfAbsent(q.getTableName(), k -> new ArrayList<>()).add(q);
         }
 
-        List<Map<String, Object>> tables = buildTables(byTable);
-        List<Map<String, Object>> flowSteps = buildFlowSteps(byTable);
+        List<Map<String, Object>> tables     = buildTables(byTable);
+        List<Map<String, Object>> flowSteps  = buildFlowSteps(byTable);
         List<Map<String, Object>> operations = buildOperations(byTable);
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("traceId", trace.getTraceId());
-        result.put("method", trace.getMethod());
-        result.put("uri", trace.getUri());
-        result.put("statusCode", trace.getStatusCode());
-        result.put("durationMs", trace.getDurationMs());
-        result.put("timestamp", trace.getTimestamp());
-        result.put("queryCount", enriched.size());
-        result.put("dbTimeMs", dbTime);
-        result.put("slowCount", slowCount);
-        result.put("dupCount", dupCount);
+        result.put("traceId",     trace.getTraceId());
+        result.put("method",      trace.getMethod());
+        result.put("uri",         trace.getUri());
+        result.put("statusCode",  trace.getStatusCode());
+        result.put("durationMs",  trace.getDurationMs());
+        result.put("timestamp",   trace.getTimestamp());
+        result.put("queryCount",  enriched.size());
+        result.put("dbTimeMs",    dbTime);
+        result.put("slowCount",   slowCount);
+        result.put("dupCount",    dupCount);
         result.put("hasNPlusOne", trace.isHasNPlusOne());
         result.put("hasDuplicates", trace.isHasDuplicates());
-        result.put("tables", tables);
-        result.put("flowSteps", flowSteps);
-        result.put("operations", operations);
+        result.put("tables",      tables);
+        result.put("flowSteps",   flowSteps);
+        result.put("operations",  operations);
         return result;
     }
 
@@ -93,9 +119,9 @@ public class QueryTrackerController {
             long tableDur = qs.stream().mapToLong(QueryEntry::getDurationMs).sum();
             List<String> ops = qs.stream().map(QueryEntry::getOperationType).collect(Collectors.toList());
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("table", entry.getKey());
+            row.put("table",      entry.getKey());
             row.put("operations", ops);
-            row.put("count", qs.size());
+            row.put("count",      qs.size());
             row.put("durationMs", tableDur);
             tables.add(row);
         }
@@ -113,19 +139,19 @@ public class QueryTrackerController {
             int subIdx = 1;
             for (QueryEntry q : qs) {
                 Map<String, Object> op = new LinkedHashMap<>();
-                op.put("index", stepNum + "." + subIdx);
-                op.put("operationType", q.getOperationType());
-                op.put("sql", q.getSql());
-                op.put("durationMs", q.getDurationMs());
-                op.put("isDuplicate", q.isDuplicate());
+                op.put("index",          stepNum + "." + subIdx);
+                op.put("operationType",  q.getOperationType());
+                op.put("sql",            q.getSql());
+                op.put("durationMs",     q.getDurationMs());
+                op.put("isDuplicate",    q.isDuplicate());
                 op.put("duplicateCount", q.getDuplicateCount());
                 subOps.add(op);
                 subIdx++;
             }
 
             Map<String, Object> step = new LinkedHashMap<>();
-            step.put("step", stepNum);
-            step.put("table", entry.getKey());
+            step.put("step",       stepNum);
+            step.put("table",      entry.getKey());
             step.put("queryCount", qs.size());
             step.put("durationMs", tableDur);
             step.put("operations", subOps);
@@ -143,13 +169,13 @@ public class QueryTrackerController {
             int subIdx = 1;
             for (QueryEntry q : qs) {
                 Map<String, Object> op = new LinkedHashMap<>();
-                op.put("index", globalIdx);
-                op.put("label", entry.getKey().toUpperCase() + "." + subIdx);
-                op.put("table", entry.getKey());
-                op.put("operationType", q.getOperationType());
-                op.put("sql", q.getSql());
-                op.put("durationMs", q.getDurationMs());
-                op.put("isDuplicate", q.isDuplicate());
+                op.put("index",          globalIdx);
+                op.put("label",          entry.getKey().toUpperCase() + "." + subIdx);
+                op.put("table",          entry.getKey());
+                op.put("operationType",  q.getOperationType());
+                op.put("sql",            q.getSql());
+                op.put("durationMs",     q.getDurationMs());
+                op.put("isDuplicate",    q.isDuplicate());
                 op.put("duplicateCount", q.getDuplicateCount());
                 operations.add(op);
                 subIdx++;

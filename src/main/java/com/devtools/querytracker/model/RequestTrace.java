@@ -2,11 +2,13 @@ package com.devtools.querytracker.model;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
 
 @Getter
 @Builder
+@Jacksonized
 public class RequestTrace {
     private final String traceId;
     private final String method;

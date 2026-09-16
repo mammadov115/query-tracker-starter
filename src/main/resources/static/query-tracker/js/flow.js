@@ -27,17 +27,39 @@ var Flow = (function () {
     $('#fl-detail-panel').hide().empty();
   }
 
+  function buildCopyText(trace) {
+    var lines = [];
+    lines.push('Request: ' + trace.method + ' ' + trace.uri);
+    lines.push('Duration: ' + trace.durationMs + 'ms  |  Queries: ' + trace.queryCount);
+    if (trace.hasNPlusOne)   lines.push('WARNING: N+1 detected');
+    if (trace.hasDuplicates) lines.push('WARNING: Duplicate queries detected');
+    lines.push('');
+
+    var globalIdx = 1;
+    (trace.flowSteps || []).forEach(function (step) {
+      (step.operations || []).forEach(function (op) {
+        var dupNote = op.isDuplicate ? ' [DUPLICATE x' + op.duplicateCount + ']' : '';
+        lines.push('-- Query #' + globalIdx + ' | ' + op.operationType + ' | ' + step.table + ' | ' + op.durationMs + 'ms' + dupNote);
+        lines.push(op.sql || '');
+        lines.push('');
+        globalIdx++;
+      });
+    });
+
+    return lines.join('\n');
+  }
+
   function renderSteps(steps) {
     var $flow = $('#fl-flow-steps').empty();
 
     steps.forEach(function (step, idx) {
       var isLast = idx === steps.length - 1;
 
-      var subOpsHtml = (step.operations || []).map(function (op) {
+      var subOpsHtml = (step.operations || []).map(function (op, opIdx) {
         var dupTag = op.isDuplicate ? '<span class="qtag qtag-dup">DUP</span>' : '';
-        return '<div class="fl-subop" data-table="' + esc(step.table) + '" data-stepidx="' + idx + '">' +
+        return '<div class="fl-subop" data-stepidx="' + idx + '" data-opidx="' + opIdx + '">' +
           opBadge(op.operationType) +
-          '<span class="fl-subop-label">' + esc(op.operationType.charAt(0) + op.operationType.slice(1).toLowerCase()) + ' ' + esc(step.table) + '</span>' +
+          '<span class="fl-subop-label">' + esc(op.label || (op.operationType.charAt(0) + op.operationType.slice(1).toLowerCase() + ' ' + step.table)) + '</span>' +
           dupTag +
           '<span class="fl-subop-dur">' + op.durationMs + 'ms</span>' +
         '</div>';
@@ -60,27 +82,72 @@ var Flow = (function () {
       $flow.append(stepHtml);
     });
 
-    // click step -> show detail panel
-    $flow.off('click', '.fl-step-card').on('click', '.fl-step-card', function () {
+    // card header click -> open detail panel, no highlight
+    $flow.off('click', '.fl-step-card').on('click', '.fl-step-card', function (e) {
+      if ($(e.target).closest('.fl-subop').length) return;
       var idx = parseInt($(this).data('stepidx'));
       var step = (currentTrace.flowSteps || [])[idx];
       if (!step) return;
       $('.fl-step-card').removeClass('active');
       $(this).addClass('active');
-      renderDetailPanel(step);
+      renderDetailPanel(step, -1);
     });
+
+    // subop click -> open panel and scroll+highlight the matching right-side block
+    $flow.off('click', '.fl-subop').on('click', '.fl-subop', function (e) {
+      e.stopPropagation();
+      var stepIdx = parseInt($(this).data('stepidx'));
+      var opIdx   = parseInt($(this).data('opidx'));
+      var step = (currentTrace.flowSteps || [])[stepIdx];
+      if (!step) return;
+      $('.fl-step-card').removeClass('active');
+      $(this).closest('.fl-step-card').addClass('active');
+      renderDetailPanel(step, opIdx);
+    });
+
+    // copy all SQLs button (rendered once in the right panel placeholder area)
+    renderCopyBar();
   }
 
-  function renderDetailPanel(step) {
+  function renderCopyBar() {
+    var $right = $('#fl-detail-panel').closest('.fl-right');
+
+    // remove old copy bar if exists
+    $right.find('.fl-copy-bar').remove();
+
+    var $bar = $(
+      '<div class="fl-copy-bar">' +
+        '<span class="fl-copy-bar-label">All SQL queries for this request</span>' +
+        '<button class="btn-copy fl-copy-all-btn">Copy all</button>' +
+      '</div>'
+    );
+
+    $bar.find('.fl-copy-all-btn').on('click', function () {
+      if (!currentTrace) return;
+      var text = buildCopyText(currentTrace);
+      navigator.clipboard.writeText(text).then(function () {
+        var $btn = $bar.find('.fl-copy-all-btn');
+        $btn.text('Copied!').css('color', 'var(--ok)').css('border-color', 'var(--ok)');
+        setTimeout(function () {
+          $btn.text('Copy all').css('color', '').css('border-color', '');
+        }, 1800);
+      });
+    });
+
+    // insert before the detail panel
+    $('#fl-detail-panel').before($bar);
+  }
+
+  function renderDetailPanel(step, highlightOpIdx) {
     var $panel = $('#fl-detail-panel');
 
     var opsHtml = (step.operations || []).map(function (op, i) {
       var dupTag = op.isDuplicate ? '<span class="qtag qtag-dup">DUP</span>' : '';
-      return '<div class="fl-panel-op">' +
+      return '<div class="fl-panel-op" data-panelop="' + i + '">' +
         '<div class="fl-panel-op-header">' +
           '<span class="fl-panel-op-num">' + (i + 1) + '</span>' +
           '<span class="op-badge ' + opCls(op.operationType) + '">' + esc(op.operationType) + '</span>' +
-          '<span class="fl-panel-op-title">' + opLabel(op.operationType) + ' ' + esc(step.table) + '</span>' +
+          '<span class="fl-panel-op-title">' + esc(op.label || (opLabel(op.operationType) + ' ' + step.table)) + '</span>' +
           dupTag +
           '<span class="fl-panel-op-dur">' + op.durationMs + 'ms</span>' +
         '</div>' +
@@ -99,6 +166,24 @@ var Flow = (function () {
       opsHtml +
       summaryHtml
     ).show();
+
+    if (highlightOpIdx >= 0) {
+      var $target = $panel.find('[data-panelop="' + highlightOpIdx + '"]');
+      if (!$target.length) return;
+
+      var $scrollContainer = $('#fl-detail-panel').closest('.fl-right');
+      var targetTop = $target[0].offsetTop;
+
+      $scrollContainer.animate({ scrollTop: targetTop - 12 }, 180, function () {
+        $target.addClass('fl-panel-op-highlight');
+        setTimeout(function () {
+          $target.addClass('fl-panel-op-highlight-fade');
+          setTimeout(function () {
+            $target.removeClass('fl-panel-op-highlight fl-panel-op-highlight-fade');
+          }, 600);
+        }, 1000);
+      });
+    }
   }
 
   function opCls(op) {
