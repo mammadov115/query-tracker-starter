@@ -78,6 +78,30 @@ public class QueryTrackerController {
                 .build();
     }
 
+
+    @GetMapping("/api/traces/history")
+    public ResponseEntity<Map<String, Object>> getHistory(
+            @RequestParam("uri") String uri) {
+
+        List<Map<String, Object>> points = traceStorage.getAll().stream()
+                .filter(t -> t.getUri().equals(uri))
+                .sorted(Comparator.comparingLong(RequestTrace::getTimestamp))
+                .map(t -> {
+                    Map<String, Object> p = new LinkedHashMap<>();
+                    p.put("traceId",    t.getTraceId());
+                    p.put("method",     t.getMethod());
+                    p.put("timestamp",  t.getTimestamp());
+                    p.put("durationMs", t.getDurationMs());
+                    p.put("queryCount", t.getQueryCount());
+                    p.put("statusCode", t.getStatusCode());
+                    return p;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of("status", "success",
+                "data", Map.of("history", points, "uri", uri)));
+    }
+
     private Map<String, Object> buildDetail(RequestTrace trace, List<QueryEntry> enriched) {
         long dbTime    = enriched.stream().mapToLong(QueryEntry::getDurationMs).sum();
         long slowCount = enriched.stream().filter(q -> q.getDurationMs() > 50).count();

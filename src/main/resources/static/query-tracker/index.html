@@ -6,6 +6,7 @@
   <title>Query Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="css/main.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 </head>
@@ -160,6 +161,7 @@
       <button class="detail-tab active" data-tab="overview">Overview</button>
       <button class="detail-tab" data-tab="flow">Flow</button>
       <button class="detail-tab" data-tab="operations">Operations</button>
+      <button class="detail-tab" data-tab="history">History</button>
     </div>
 
     <div class="detail-body">
@@ -228,6 +230,7 @@
       <button class="detail-tab" data-tab="overview">Overview</button>
       <button class="detail-tab active" data-tab="flow">Flow</button>
       <button class="detail-tab" data-tab="operations">Operations</button>
+      <button class="detail-tab" data-tab="history">History</button>
     </div>
 
     <div class="detail-body fl-layout">
@@ -256,6 +259,7 @@
       <button class="detail-tab" data-tab="overview">Overview</button>
       <button class="detail-tab" data-tab="flow">Flow</button>
       <button class="detail-tab active" data-tab="operations">Operations</button>
+      <button class="detail-tab" data-tab="history">History</button>
     </div>
 
     <div class="detail-body ops-layout">
@@ -277,12 +281,57 @@
     </div>
   </div>
 
+
+  <!-- HISTORY PAGE -->
+  <div id="page-history" class="hidden">
+    <div class="inspect-topbar">
+      <button class="btn-back detail-back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="inspect-meta">
+        <span class="method-badge" id="hist-method"></span>
+        <span class="inspect-uri" id="hist-uri"></span>
+      </div>
+    </div>
+    <div class="inspect-summary">
+      <span class="inspect-meta-line">Latency History - Request latency and SQL query count over time.</span>
+    </div>
+
+    <div class="detail-tabs">
+      <button class="detail-tab" data-tab="overview">Overview</button>
+      <button class="detail-tab" data-tab="flow">Flow</button>
+      <button class="detail-tab" data-tab="operations">Operations</button>
+      <button class="detail-tab active" data-tab="history">History</button>
+    </div>
+
+    <div class="detail-body">
+      <div class="hist-chart-wrap">
+        <canvas id="hist-chart"></canvas>
+      </div>
+      <div class="ov-section" style="margin-top:24px">
+        <div class="ov-section-header">
+          <span class="ov-section-title">Request History</span>
+          <span class="ov-section-sub">All recorded requests for this endpoint, newest first.</span>
+        </div>
+        <table class="ov-table">
+          <thead>
+            <tr><th>Method</th><th>Time</th><th>Latency</th><th>SQL Queries</th><th>Trace ID</th></tr>
+          </thead>
+          <tbody id="hist-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <script src="js/api.js"></script>
   <script src="js/list.js"></script>
   <script src="js/inspect.js"></script>
   <script src="js/overview.js"></script>
   <script src="js/flow.js"></script>
   <script src="js/operations.js"></script>
+  <script src="js/history.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -33,5 +33,17 @@ var Api = (function () {
     });
   }
 
-  return { getTraces: getTraces, getTrace: getTrace, clearTraces: clearTraces };
+
+  function getHistory(uri, onSuccess) {
+    $.ajax({
+      url: BASE + '/traces/history?uri=' + encodeURIComponent(uri),
+      method: 'GET',
+      success: function (res) {
+        if (res.status === 'success') onSuccess(res.data);
+      },
+      error: function () {}
+    });
+  }
+
+  return { getTraces: getTraces, getTrace: getTrace, clearTraces: clearTraces, getHistory: getHistory };
 })();

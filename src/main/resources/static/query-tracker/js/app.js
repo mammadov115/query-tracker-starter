@@ -19,7 +19,7 @@ $(function () {
   }
 
   function hideAllPages() {
-    $('#page-list, #page-inspect, #page-overview, #page-flow, #page-operations').addClass('hidden');
+    $('#page-list, #page-inspect, #page-overview, #page-flow, #page-operations, #page-history').addClass('hidden');
   }
 
   function setActiveTab(tab) {
@@ -41,6 +41,9 @@ $(function () {
       } else if (tab === 'operations') {
         $('#page-operations').removeClass('hidden');
         Operations.open(trace);
+      } else if (tab === 'history') {
+        $('#page-history').removeClass('hidden');
+        History.open(trace);
       }
     });
   }
